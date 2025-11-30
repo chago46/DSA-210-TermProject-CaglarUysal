@@ -1,0 +1,164 @@
+================================================================================
+EXPLORATORY DATA ANALYSIS REPORT - COMPREHENSIVE
+================================================================================
+
+Dataset Shape: (30135, 72)
+Date Generated: 2025-11-30 21:04:44
+Total Observations: 30,135
+Total Features: 72
+
+
+================================================================================
+DATA QUALITY SUMMARY
+================================================================================
+Missing Values: 190,226
+Duplicate Rows: 0
+Data Completeness: 91.23%
+
+
+COLUMN BREAKDOWN:
+  Original columns (GradCafe data): 23
+  QS Rankings columns: 28
+  Cost of Living columns: 21
+  Total columns: 72
+
+
+KEY COLUMNS ANALYSIS:
+
+  Target Variable:
+    - Chance of Admit: 30,135 values (100.0%), Mean: 0.54
+    - is_accepted: 30,135 values (100.0%), Mean: 0.54
+
+  Academic Metrics:
+    - GRE Score: 30,135 values (100.0%), Mean: 654.68
+    - GPA: 27,108 values (90.0%), Mean: 3.66
+    - GRE Verbal: 30,135 values (100.0%), Mean: 292.57
+    - GRE Quant: 30,135 values (100.0%), Mean: 322.05
+
+  University Metrics:
+    - qs_Overall_Score: 24,478 values (81.2%), Mean: 63.55
+    - qs_RANK_2025: 30,135 values (100.0%), Unique: 174
+    - qs_Academic_Reputation_Score: 30,135 values (100.0%), Mean: 56.89
+
+  Economic Metrics:
+    - col_Cost of Living Index_mean: 30,120 values (100.0%), Mean: 70.73
+    - col_Rent Index_mean: 30,120 values (100.0%), Mean: 40.50
+
+
+================================================================================
+DESCRIPTIVE STATISTICS
+================================================================================
+
+Key Numeric Variables Summary:
+
+  GRE Score:
+    Count: 30,135
+    Mean: 654.68
+    Std: 73.91
+    Min: 200.00
+    Max: 800.00
+    Median: 665.00
+
+  GPA:
+    Count: 27,108
+    Mean: 3.66
+    Std: 0.30
+    Min: 1.00
+    Max: 4.00
+    Median: 3.72
+
+  qs_Overall_Score:
+    Count: 24,478
+    Mean: 63.55
+    Std: 22.89
+    Min: 20.80
+    Max: 100.00
+    Median: 65.30
+
+  qs_Academic_Reputation_Score:
+    Count: 30,135
+    Mean: 56.89
+    Std: 36.02
+    Min: 1.30
+    Max: 100.00
+    Median: 59.90
+
+  col_Cost of Living Index_mean:
+    Count: 30,120
+    Mean: 70.73
+    Std: 1.77
+    Min: 24.42
+    Max: 120.63
+    Median: 70.91
+
+  Chance of Admit:
+    Count: 30,135
+    Mean: 0.54
+    Std: 0.50
+    Min: 0.00
+    Max: 1.00
+    Median: 1.00
+
+
+================================================================================
+TOP CORRELATIONS WITH TARGET (Chance of Admit)
+================================================================================
+
+  Top 10 Positive Correlations:
+    is_accepted: 1.000
+    gre_subject: 0.072
+    is_new_gre: 0.043
+    GPA: 0.039
+    gre_writing: 0.029
+    ugrad_gpa: 0.023
+    col_Restaurant Price Index_median: 0.010
+    col_Restaurant Price Index_mean: 0.008
+    col_Rank_mean: 0.000
+    col_Rank_median: 0.000
+
+  Top 10 Negative Correlations:
+    col_Cost of Living Index_median: -0.002
+    col_Restaurant Price Index_std: -0.004
+    col_Cost of Living Index_mean: -0.004
+    col_Cost of Living Plus Rent Index_median: -0.009
+    col_Cost of Living Plus Rent Index_mean: -0.010
+    col_Cost of Living Plus Rent Index_std: -0.012
+    col_Rent Index_median: -0.012
+    col_Cost of Living Index_std: -0.013
+    col_Rent Index_mean: -0.013
+    col_Rent Index_std: -0.013
+
+  QS Rankings Correlations (Top 5):
+    qs_Academic_Reputation_Score: -0.159
+    qs_Citations_per_Faculty_Score: -0.149
+    qs_Employer_Reputation_Score: -0.146
+    qs_Employment_Outcomes_Score: -0.145
+    qs_Faculty_Student_Score: -0.145
+
+  Cost of Living Correlations (Top 5):
+    col_Local Purchasing Power Index_std: -0.024
+    col_Groceries Index_mean: -0.024
+    col_Groceries Index_median: -0.023
+    col_Local Purchasing Power Index_mean: -0.021
+    col_Groceries Index_std: -0.020
+
+
+================================================================================
+UNIVERSITY ANALYSIS
+================================================================================
+  Unique Universities: 284
+
+  Top 10 Universities by Application Count:
+    1. Stanford University: 1,303 applications (4.3%)
+    2. Cornell University: 1,032 applications (3.4%)
+    3. University of Washington: 992 applications (3.3%)
+    4. Columbia University: 946 applications (3.1%)
+    5. University of Chicago: 928 applications (3.1%)
+    6. Northwestern University: 886 applications (2.9%)
+    7. Princeton University: 805 applications (2.7%)
+    8. Boston University: 782 applications (2.6%)
+    9. Duke University: 713 applications (2.4%)
+    10. University of Pennsylvania: 675 applications (2.2%)
+
+  QS Rankings Coverage: 81.2%
+  Cost of Living Coverage: 100.0%

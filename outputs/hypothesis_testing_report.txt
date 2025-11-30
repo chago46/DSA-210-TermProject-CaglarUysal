@@ -1,0 +1,137 @@
+================================================================================
+HYPOTHESIS TESTING REPORT - COMPREHENSIVE ANALYSIS
+================================================================================
+
+Date Generated: 2025-11-30 21:04:50
+Dataset Shape: (30135, 72)
+Total Observations: 30,135
+
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+KEY FINDINGS:
+  H1: GRE scores show WEAK correlation with admission (r=-0.013, p=0.0232)
+    → Interpretation: GRE scores alone are not strong predictors in this dataset
+    → Action: Consider GRE as one factor among many, not a primary determinant
+  H2: GPA correlation: 0.039
+    → Most predictive factor: qs_Academic_Reputation_Score (r=-0.159)
+    → Interpretation: GPA is NOT the most predictive factor
+    → Action: Consider university prestige (QS rankings) as more important than GPA alone
+  H3: Research Intensity shows SIGNIFICANT impact on admission
+    → Tested using QS Research Intensity (qs_RES.) as proxy
+    → Significant difference found (p=0.0000)
+    → Action: Consider university research intensity in application strategy
+  H5: University prestige correlates with GRE requirements
+    → QS Overall Score vs GRE: r=0.307, p=0.0000
+    → Interpretation: Higher prestige universities require higher GRE scores
+    → Action: Match your GRE scores to universities' QS rankings
+  H6: QS Rankings show STRONG correlations with admission
+    → Strongest: qs_Academic_Reputation_Score (r=-0.159, p=8.79e-171)
+    → Interpretation: University prestige (QS rankings) is a strong predictor
+    → Note: Negative correlation suggests higher-ranked universities may have lower acceptance rates
+    → Action: University selection strategy should prioritize QS rankings
+
+
+================================================================================
+DETAILED HYPOTHESIS RESULTS
+================================================================================
+
+
+HYPOTHESIS 1: H1: GRE and TOEFL correlation
+--------------------------------------------------------------------------------
+  RESULTS:
+    GRE Correlation: -0.0131
+    P-value: 0.0232
+    Significant: Yes
+    Strength: Weak
+  INTERPRETATION:
+    - GRE scores show very weak correlation with admission probability
+    - This contradicts the hypothesis that GRE strongly predicts admission
+    - Possible reasons: dataset includes only accepted/rejected (binary), not probability
+    - Or: GRE scores may be necessary but not sufficient
+  RECOMMENDATION:
+    - GRE scores should be considered alongside other factors
+    - Focus on holistic application review rather than GRE alone
+
+
+HYPOTHESIS 2: H2: GPA most predictive
+--------------------------------------------------------------------------------
+  RESULTS:
+    Top 5 Most Predictive Factors:
+      1. qs_Academic_Reputation_Score: r=-0.1595, p=8.79e-171
+      2. qs_Citations_per_Faculty_Score: r=-0.1487, p=1.34e-148
+      3. qs_Employer_Reputation_Score: r=-0.1460, p=3.28e-143
+      4. qs_Employment_Outcomes_Score: r=-0.1453, p=9.37e-142
+      5. qs_Faculty_Student_Score: r=-0.1452, p=1.15e-141
+
+    GPA Correlation: 0.0389
+  INTERPRETATION:
+    - GPA is NOT the most predictive factor
+    - qs_Academic_Reputation_Score has stronger correlation (-0.1595)
+    - QS ranking scores show stronger negative correlations
+    - This suggests university prestige matters more than individual GPA
+  RECOMMENDATION:
+    - Consider university prestige (QS rankings) in admission strategy
+    - GPA is important but not the sole determinant
+    - Focus on applying to universities where your GPA aligns with their standards
+
+
+HYPOTHESIS 3: H3: Research experience impact
+--------------------------------------------------------------------------------
+  RESULTS:
+    P-value: 0.0000
+    Significant: Yes
+    High Research Intensity mean: 0.0000
+    Low Research Intensity mean: 0.6738
+  INTERPRETATION:
+    - Tested using QS Research Intensity (qs_RES.) as proxy for research focus
+    - Categories: VH (Very High), HI (High), MD (Medium)
+    - Significant difference found between research intensity levels
+    - Higher research intensity universities show different admission patterns
+  RECOMMENDATION:
+    - Consider university research intensity when selecting target universities
+    - Research-focused universities may have different admission criteria
+
+
+HYPOTHESIS 4: H4: SOP and LOR moderate impact
+--------------------------------------------------------------------------------
+  STATUS: Could not be tested (missing data)
+
+HYPOTHESIS 5: H5: University rating correlation
+--------------------------------------------------------------------------------
+  RESULTS:
+    GRE Correlation: 0.3070
+    P-value: 0.0000
+    Significant: Yes
+  INTERPRETATION:
+    - University prestige (QS Overall Score) shows correlation with GRE (r=0.3070)
+    - Higher prestige universities require higher GRE scores
+    - This confirms that top universities have higher admission standards
+  RECOMMENDATION:
+    - Target universities based on your GRE scores and their QS rankings
+    - Higher-ranked universities require higher test scores
+    - Use QS rankings to identify appropriate target universities
+
+
+HYPOTHESIS 6: H6: Socioeconomic patterns
+--------------------------------------------------------------------------------
+  RESULTS:
+    QS Rankings Correlations:
+      qs_Overall_Score: r=-0.1447, p=1.14e-114
+      qs_Academic_Reputation_Score: r=-0.1595, p=8.79e-171
+
+    Cost of Living Correlations:
+      No significant correlations found
+  INTERPRETATION:
+    - QS rankings show strong correlations (strongest: qs_Academic_Reputation_Score, r=-0.1595)
+    - Negative correlations suggest higher-ranked universities may have lower acceptance rates
+    - This could indicate: more selective admissions at top universities
+    - Cost of living shows minimal impact on admission probability
+    - Economic factors may not directly influence admission decisions
+  RECOMMENDATION:
+    - University selection should prioritize QS rankings
+    - Consider that top-ranked universities may be more selective
+    - Cost of living is not a primary factor in admission decisions
+
