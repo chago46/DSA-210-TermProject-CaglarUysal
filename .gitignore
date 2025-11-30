@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Data files
+data/raw/
+data/processed/
+*.csv
+*.xlsx
+*.xls
+*.Rdata
+*.pkl
+*.pickle
+
+# Kaggle API
+.kaggle/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+outputs/
+results/
+*.html
+
+# Logs (optional - uncomment if you don't want to track logs)
+# logs/
+
