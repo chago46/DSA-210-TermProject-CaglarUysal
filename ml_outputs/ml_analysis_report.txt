@@ -1,0 +1,45 @@
+============================================================
+MACHINE LEARNING ANALYSIS REPORT
+============================================================
+
+RANDOM FOREST CLASSIFIER RESULTS
+------------------------------------------------------------
+Model Type: Random Forest
+Best Hyperparameters: {'class_weight': 'balanced', 'max_depth': 20, 'max_features': 'sqrt', 'min_samples_leaf': 5, 'min_samples_split': 30, 'n_estimators': 200}
+Random Forest CV Score: 0.6695
+Decision Tree CV Score: 0.6369
+
+Cross-Validation Accuracy: 0.6201 (+/- 0.0119)
+Training Accuracy: 0.7737
+Test Accuracy: 0.6317
+Test Precision: 0.6562
+Test Recall: 0.6554
+Test F1-Score: 0.6558
+Test ROC-AUC: 0.6827
+
+Confusion Matrix:
+[[1692 1108]
+ [1112 2115]]
+
+TOP 20 MOST IMPORTANT FEATURES
+------------------------------------------------------------
+major_encoded                           : 0.120982
+QS_Rep_GRE                              : 0.086708
+gre_verbal                              : 0.079660
+ugrad_gpa                               : 0.074664
+QS_Citations_GPA                        : 0.073738
+QS_Rep_GPA                              : 0.071653
+gre_quant                               : 0.069415
+gre_writing                             : 0.044036
+qs_Academic_Reputation_Score            : 0.034346
+season_encoded                          : 0.031473
+qs_Faculty_Student_Score                : 0.029094
+gre_subject                             : 0.026932
+qs_Academic_Reputation_Rank             : 0.026200
+qs_Citations_per_Faculty_Score          : 0.025132
+qs_Employment_Outcomes_Score            : 0.020390
+qs_Citations_per_Faculty_Rank           : 0.019372
+qs_Overall_Score                        : 0.019074
+qs_International_Students_Score         : 0.017931
+qs_Employment_Outcomes_Rank             : 0.017032
+qs_International_Research_Network_Score : 0.015661
