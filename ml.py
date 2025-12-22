@@ -2,16 +2,20 @@
 Machine Learning Analysis Script
 
 This script applies machine learning techniques to predict graduate admission outcomes:
-- Decision Tree Classifier for approval/rejection prediction
+- Random Forest / Decision Tree Classifier for approval/rejection prediction
+- K-means Clustering to identify applicant groups and analyze admission patterns
 
 The script demonstrates:
 1. Data preprocessing and feature selection
-2. Decision Tree model training and evaluation
-3. Visualization of results
+2. Clustering analysis to identify applicant groups
+3. Model training and evaluation
+4. Visualization of results
 """
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend to avoid GUI issues
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -22,10 +26,13 @@ warnings.filterwarnings('ignore')
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix,
-    precision_score, recall_score, f1_score, roc_auc_score, roc_curve
+    precision_score, recall_score, f1_score, roc_auc_score, roc_curve,
+    silhouette_score, davies_bouldin_score
 )
 
 # Set style
@@ -320,11 +327,11 @@ def train_decision_tree(X, y):
     
     # Choose the better model
     if rf_grid_search.best_score_ >= dt_grid_search.best_score_:
-        print("\n✓ Random Forest performs better - using it as final model")
+        print("\n[+] Random Forest performs better - using it as final model")
         classifier = rf_classifier
         model_name = "Random Forest"
     else:
-        print("\n✓ Decision Tree performs better - using it as final model")
+        print("\n[+] Decision Tree performs better - using it as final model")
         classifier = dt_classifier
         model_name = "Decision Tree"
     
@@ -354,6 +361,10 @@ def train_decision_tree(X, y):
     print(f"Test F1-Score: {test_f1:.4f}")
     print(f"Test ROC-AUC: {test_roc_auc:.4f}")
     
+    # Classification report
+    class_report = classification_report(y_test, y_test_pred, 
+                                        target_names=['Rejected', 'Accepted'],
+                                        output_dict=True)
     print("\nClassification Report (Test Set):")
     print(classification_report(y_test, y_test_pred, 
                               target_names=['Rejected', 'Accepted']))
@@ -402,7 +413,7 @@ def train_decision_tree(X, y):
     axes[0, 2].grid(True)
     
     # 4. Prediction Distribution
-    prediction_proba = dt_classifier.predict_proba(X_test)[:, 1]
+    prediction_proba = classifier.predict_proba(X_test)[:, 1]
     axes[1, 0].hist(prediction_proba[y_test == 0], bins=30, alpha=0.5, 
                     label='Rejected', color='red')
     axes[1, 0].hist(prediction_proba[y_test == 1], bins=30, alpha=0.5, 
@@ -447,6 +458,7 @@ def train_decision_tree(X, y):
         'test_f1': test_f1,
         'test_roc_auc': test_roc_auc,
         'confusion_matrix': cm,
+        'classification_report': class_report,
         'best_params': rf_grid_search.best_params_ if model_name == "Random Forest" else dt_grid_search.best_params_,
         'cv_mean': cv_scores.mean(),
         'cv_std': cv_scores.std(),
@@ -455,7 +467,245 @@ def train_decision_tree(X, y):
     }
 
 
-def generate_report(dt_results, feature_importance):
+def perform_clustering_analysis(X, y, X_scaled=None):
+    """
+    Perform K-means clustering to identify applicant groups
+    and analyze their admission patterns
+    """
+    print("\n" + "="*60)
+    print("K-MEANS CLUSTERING ANALYSIS")
+    print("="*60)
+    
+    # Standardize features for clustering
+    if X_scaled is None:
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+    else:
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+    
+    # Select key features for clustering (most important academic and QS features)
+    key_features = [
+        'qs_Academic_Reputation_Score', 'qs_Citations_per_Faculty_Score',
+        'gre_verbal', 'gre_quant', 'ugrad_gpa', 'qs_Overall_Score'
+    ]
+    available_key_features = [f for f in key_features if f in X.columns]
+    
+    if len(available_key_features) > 0:
+        # Use key features for clustering
+        feature_indices = [list(X.columns).index(f) for f in available_key_features]
+        X_cluster = X_scaled[:, feature_indices]
+        feature_names = available_key_features
+    else:
+        # Use all features if key features not available
+        X_cluster = X_scaled
+        feature_names = list(X.columns)
+    
+    print(f"Using {len(feature_names)} features for clustering")
+    
+    # Determine optimal number of clusters
+    print("\nDetermining optimal number of clusters...")
+    silhouette_scores = []
+    davies_bouldin_scores = []
+    inertias = []
+    K_range = range(2, 8)
+    
+    for k in K_range:
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        cluster_labels = kmeans.fit_predict(X_cluster)
+        silhouette_scores.append(silhouette_score(X_cluster, cluster_labels))
+        davies_bouldin_scores.append(davies_bouldin_score(X_cluster, cluster_labels))
+        inertias.append(kmeans.inertia_)
+    
+    # Find optimal k (highest silhouette score, lowest DB score)
+    optimal_k_idx = np.argmax(silhouette_scores)
+    optimal_k = K_range[optimal_k_idx]
+    print(f"Optimal number of clusters (by silhouette score): {optimal_k}")
+    print(f"Silhouette score: {silhouette_scores[optimal_k_idx]:.4f}")
+    print(f"Davies-Bouldin score: {davies_bouldin_scores[optimal_k_idx]:.4f}")
+    
+    # Apply K-means with optimal k
+    print(f"\nApplying K-means with {optimal_k} clusters...")
+    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(X_cluster)
+    
+    # Calculate final metrics
+    silhouette_avg = silhouette_score(X_cluster, cluster_labels)
+    db_score = davies_bouldin_score(X_cluster, cluster_labels)
+    print(f"Final Silhouette Score: {silhouette_avg:.4f}")
+    print(f"Final Davies-Bouldin Score: {db_score:.4f}")
+    
+    # Analyze clusters
+    df_clustered = pd.DataFrame(X_scaled, columns=X.columns)
+    df_clustered['cluster'] = cluster_labels
+    df_clustered['is_accepted'] = y.values
+    
+    print("\n" + "="*60)
+    print("CLUSTER ANALYSIS")
+    print("="*60)
+    cluster_stats = []
+    
+    for cluster_id in range(optimal_k):
+        cluster_data = df_clustered[df_clustered['cluster'] == cluster_id]
+        acceptance_rate = cluster_data['is_accepted'].mean()
+        cluster_size = len(cluster_data)
+        
+        print(f"\nCluster {cluster_id}:")
+        print(f"  Size: {cluster_size} ({cluster_size/len(df_clustered)*100:.1f}%)")
+        print(f"  Acceptance Rate: {acceptance_rate:.2%}")
+        
+        # Calculate mean values of key features for this cluster
+        if len(available_key_features) > 0:
+            print(f"  Average feature values:")
+            for feat in available_key_features:
+                if feat in cluster_data.columns:
+                    mean_val = cluster_data[feat].mean()
+                    print(f"    {feat}: {mean_val:.3f}")
+        
+        cluster_stats.append({
+            'cluster': cluster_id,
+            'size': cluster_size,
+            'acceptance_rate': acceptance_rate
+        })
+    
+    # Visualizations
+    fig = plt.figure(figsize=(20, 14))
+    gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+    
+    # 1. Elbow Method
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(K_range, inertias, marker='o', linewidth=2, markersize=8)
+    ax1.axvline(x=optimal_k, color='r', linestyle='--', linewidth=2, label=f'Optimal k={optimal_k}')
+    ax1.set_xlabel('Number of Clusters (k)', fontsize=11)
+    ax1.set_ylabel('Inertia', fontsize=11)
+    ax1.set_title('Elbow Method for Optimal k', fontsize=12, fontweight='bold')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # 2. Silhouette Scores
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(K_range, silhouette_scores, marker='o', color='green', linewidth=2, markersize=8)
+    ax2.axvline(x=optimal_k, color='r', linestyle='--', linewidth=2, label=f'Optimal k={optimal_k}')
+    ax2.set_xlabel('Number of Clusters (k)', fontsize=11)
+    ax2.set_ylabel('Silhouette Score', fontsize=11)
+    ax2.set_title('Silhouette Score vs Number of Clusters', fontsize=12, fontweight='bold')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    # 3. Davies-Bouldin Scores
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.plot(K_range, davies_bouldin_scores, marker='o', color='purple', linewidth=2, markersize=8)
+    ax3.axvline(x=optimal_k, color='r', linestyle='--', linewidth=2, label=f'Optimal k={optimal_k}')
+    ax3.set_xlabel('Number of Clusters (k)', fontsize=11)
+    ax3.set_ylabel('Davies-Bouldin Score', fontsize=11)
+    ax3.set_title('Davies-Bouldin Score vs Number of Clusters', fontsize=12, fontweight='bold')
+    ax3.legend()
+    ax3.grid(True, alpha=0.3)
+    
+    # 4. Cluster Acceptance Rates
+    ax4 = fig.add_subplot(gs[1, 0])
+    cluster_acceptance = df_clustered.groupby('cluster')['is_accepted'].agg(['mean', 'count'])
+    colors_cluster = plt.cm.Set3(np.linspace(0, 1, optimal_k))
+    bars = ax4.bar(range(optimal_k), cluster_acceptance['mean'], color=colors_cluster, alpha=0.8, edgecolor='black')
+    ax4.set_xlabel('Cluster', fontsize=11)
+    ax4.set_ylabel('Acceptance Rate', fontsize=11)
+    ax4.set_title('Acceptance Rate by Cluster', fontsize=12, fontweight='bold')
+    ax4.set_xticks(range(optimal_k))
+    ax4.set_ylim([0, 1])
+    for i, (rate, count) in enumerate(zip(cluster_acceptance['mean'], cluster_acceptance['count'])):
+        ax4.text(i, rate + 0.02, f'{rate:.1%}\n(n={count})', 
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    ax4.grid(True, alpha=0.3, axis='y')
+    
+    # 5. Cluster Sizes
+    ax5 = fig.add_subplot(gs[1, 1])
+    cluster_sizes = df_clustered['cluster'].value_counts().sort_index()
+    bars = ax5.bar(range(optimal_k), cluster_sizes.values, color=colors_cluster, alpha=0.8, edgecolor='black')
+    ax5.set_xlabel('Cluster', fontsize=11)
+    ax5.set_ylabel('Number of Applicants', fontsize=11)
+    ax5.set_title('Cluster Sizes', fontsize=12, fontweight='bold')
+    ax5.set_xticks(range(optimal_k))
+    for i, size in enumerate(cluster_sizes.values):
+        ax5.text(i, size + max(cluster_sizes.values)*0.01, f'{size}', 
+                ha='center', va='bottom', fontsize=9, fontweight='bold')
+    ax5.grid(True, alpha=0.3, axis='y')
+    
+    # 6. Cluster Distribution (Pie Chart)
+    ax6 = fig.add_subplot(gs[1, 2])
+    sizes = cluster_sizes.values
+    labels = [f'Cluster {i}\n({sizes[i]} applicants)' for i in range(optimal_k)]
+    ax6.pie(sizes, labels=labels, colors=colors_cluster, autopct='%1.1f%%', 
+           startangle=90, textprops={'fontsize': 9})
+    ax6.set_title('Cluster Distribution', fontsize=12, fontweight='bold')
+    
+    # 7. 2D PCA Visualization
+    ax7 = fig.add_subplot(gs[2, :])
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_cluster)
+    
+    scatter = ax7.scatter(X_pca[:, 0], X_pca[:, 1], c=cluster_labels, 
+                         cmap='viridis', alpha=0.6, s=30, edgecolors='black', linewidth=0.5)
+    ax7.set_xlabel(f'First Principal Component (explains {pca.explained_variance_ratio_[0]:.1%} variance)', fontsize=11)
+    ax7.set_ylabel(f'Second Principal Component (explains {pca.explained_variance_ratio_[1]:.1%} variance)', fontsize=11)
+    ax7.set_title('K-means Clustering (2D PCA Projection)', fontsize=12, fontweight='bold')
+    cbar = plt.colorbar(scatter, ax=ax7)
+    cbar.set_label('Cluster', fontsize=10)
+    ax7.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(ML_OUTPUT_DIR / 'clustering_analysis.png', dpi=300, bbox_inches='tight')
+    print(f"\nClustering visualizations saved to {ML_OUTPUT_DIR / 'clustering_analysis.png'}")
+    plt.close()
+    
+    # Create detailed cluster comparison
+    fig, ax = plt.subplots(figsize=(14, 8))
+    cluster_comparison = pd.DataFrame(cluster_stats)
+    
+    x = np.arange(optimal_k)
+    width = 0.35
+    
+    bars1 = ax.bar(x - width/2, cluster_comparison['size'], width, 
+                   label='Cluster Size', color='steelblue', alpha=0.8)
+    ax2_twin = ax.twinx()
+    bars2 = ax2_twin.bar(x + width/2, cluster_comparison['acceptance_rate']*100, width,
+                       label='Acceptance Rate (%)', color='coral', alpha=0.8)
+    
+    ax.set_xlabel('Cluster', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Number of Applicants', fontsize=12, fontweight='bold', color='steelblue')
+    ax2_twin.set_ylabel('Acceptance Rate (%)', fontsize=12, fontweight='bold', color='coral')
+    ax.set_title('Cluster Size vs Acceptance Rate', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels([f'Cluster {i}' for i in range(optimal_k)])
+    ax.tick_params(axis='y', labelcolor='steelblue')
+    ax2_twin.tick_params(axis='y', labelcolor='coral')
+    
+    # Add value labels
+    for i, (bar1, bar2) in enumerate(zip(bars1, bars2)):
+        ax.text(bar1.get_x() + bar1.get_width()/2, bar1.get_height() + max(cluster_comparison['size'])*0.01,
+               f'{int(bar1.get_height())}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+        ax2_twin.text(bar2.get_x() + bar2.get_width()/2, bar2.get_height() + 1,
+                     f'{bar2.get_height():.1f}%', ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    ax.legend(loc='upper left')
+    ax2_twin.legend(loc='upper right')
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    plt.savefig(ML_OUTPUT_DIR / 'cluster_comparison.png', dpi=300, bbox_inches='tight')
+    print(f"Cluster comparison saved to {ML_OUTPUT_DIR / 'cluster_comparison.png'}")
+    plt.close()
+    
+    return kmeans, scaler, cluster_labels, {
+        'n_clusters': optimal_k,
+        'silhouette_score': silhouette_avg,
+        'davies_bouldin_score': db_score,
+        'cluster_acceptance_rates': cluster_acceptance['mean'].to_dict(),
+        'cluster_sizes': cluster_sizes.to_dict(),
+        'cluster_stats': cluster_stats
+    }
+
+
+def generate_report(dt_results, feature_importance, clustering_results=None):
     """Generate a text report of ML analysis results"""
     report_path = ML_OUTPUT_DIR / 'ml_analysis_report.txt'
     
@@ -478,13 +728,46 @@ def generate_report(dt_results, feature_importance):
         f.write(f"Test F1-Score: {dt_results['test_f1']:.4f}\n")
         f.write(f"Test ROC-AUC: {dt_results['test_roc_auc']:.4f}\n")
         f.write("\nConfusion Matrix:\n")
-        f.write(str(dt_results['confusion_matrix']) + "\n\n")
+        f.write(str(dt_results['confusion_matrix']) + "\n")
+        f.write("\nDetailed Classification Report (Test Set):\n")
+        f.write("-"*60 + "\n")
+        if 'classification_report' in dt_results:
+            report = dt_results['classification_report']
+            f.write(f"{'Class':<15} {'Precision':<12} {'Recall':<12} {'F1-Score':<12} {'Support':<12}\n")
+            f.write("-"*60 + "\n")
+            for class_name in ['Rejected', 'Accepted']:
+                if class_name in report:
+                    metrics = report[class_name]
+                    f.write(f"{class_name:<15} {metrics['precision']:<12.4f} {metrics['recall']:<12.4f} "
+                           f"{metrics['f1-score']:<12.4f} {int(metrics['support']):<12}\n")
+            f.write("-"*60 + "\n")
+            f.write(f"{'Accuracy':<15} {'':<12} {'':<12} {report['accuracy']:<12.4f} "
+                   f"{int(report['macro avg']['support']):<12}\n")
+            f.write(f"{'Macro Avg':<15} {report['macro avg']['precision']:<12.4f} "
+                   f"{report['macro avg']['recall']:<12.4f} {report['macro avg']['f1-score']:<12.4f} "
+                   f"{int(report['macro avg']['support']):<12}\n")
+            f.write(f"{'Weighted Avg':<15} {report['weighted avg']['precision']:<12.4f} "
+                   f"{report['weighted avg']['recall']:<12.4f} {report['weighted avg']['f1-score']:<12.4f} "
+                   f"{int(report['weighted avg']['support']):<12}\n")
+        f.write("\n")
         
         f.write("TOP 20 MOST IMPORTANT FEATURES\n")
         f.write("-"*60 + "\n")
         top_20 = feature_importance.head(20)
         for idx, row in top_20.iterrows():
             f.write(f"{row['feature']:40s}: {row['importance']:.6f}\n")
+        
+        if clustering_results:
+            f.write("\n\n" + "="*60 + "\n")
+            f.write("K-MEANS CLUSTERING RESULTS\n")
+            f.write("="*60 + "\n")
+            f.write(f"Number of Clusters: {clustering_results['n_clusters']}\n")
+            f.write(f"Silhouette Score: {clustering_results['silhouette_score']:.4f}\n")
+            f.write(f"Davies-Bouldin Score: {clustering_results['davies_bouldin_score']:.4f}\n")
+            f.write("\nAcceptance Rates by Cluster:\n")
+            for cluster, rate in clustering_results['cluster_acceptance_rates'].items():
+                size = clustering_results['cluster_sizes'].get(cluster, 0)
+                f.write(f"  Cluster {cluster}: {rate:.2%} (n={size})\n")
     
     print(f"\nML analysis report saved to {report_path}")
 
@@ -502,17 +785,22 @@ def main():
     # Preprocess data
     X, y, df_processed = preprocess_data(df)
     
-    # Train Decision Tree
+    # Perform Clustering Analysis
+    clustering_model, clustering_scaler, cluster_labels, clustering_results = perform_clustering_analysis(X, y)
+    
+    # Train Decision Tree / Random Forest
     dt_model, feature_importance, dt_results = train_decision_tree(X, y)
     
     # Generate report
-    generate_report(dt_results, feature_importance)
+    generate_report(dt_results, feature_importance, clustering_results)
     
     print("\n" + "="*60)
     print("ML ANALYSIS COMPLETE")
     print("="*60)
     print(f"\nOutputs saved to {ML_OUTPUT_DIR}/")
     print("  - decision_tree_analysis.png")
+    print("  - clustering_analysis.png")
+    print("  - cluster_comparison.png")
     print("  - ml_analysis_report.txt")
 
 
