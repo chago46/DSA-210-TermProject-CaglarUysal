@@ -26,13 +26,15 @@ warnings.filterwarnings('ignore')
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.neural_network import MLPClassifier
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix,
     precision_score, recall_score, f1_score, roc_auc_score, roc_curve,
-    silhouette_score, davies_bouldin_score
+    silhouette_score, davies_bouldin_score, mean_squared_error, r2_score
 )
 
 # Set style
@@ -262,13 +264,19 @@ def preprocess_data(df):
     return X, y, df_ml[valid_mask]
 
 
-def train_decision_tree(X, y):
+def train_all_models(X, y):
     """
-    Train a Decision Tree classifier for admission prediction with hyperparameter tuning
-    Also try Random Forest for comparison
+    Train multiple models for admission prediction:
+    - Random Forest
+    - Decision Tree
+    - Logistic Regression
+    - Linear Regression (for comparison, treating as classification)
+    - Neural Network (MLPClassifier)
+    Compare and select the best performing model
     """
     print("\n" + "="*60)
-    print("DECISION TREE & RANDOM FOREST CLASSIFIERS")
+    print("MULTIPLE MODEL COMPARISON")
+    print("Random Forest, Decision Tree, Logistic Regression, Linear Regression, Neural Network")
     print("="*60)
     
     # Split data into training and testing sets
@@ -279,8 +287,16 @@ def train_decision_tree(X, y):
     print(f"Training set size: {X_train.shape[0]}")
     print(f"Test set size: {X_test.shape[0]}")
     
-    # Try Random Forest first (usually performs better)
-    print("\nTraining Random Forest Classifier...")
+    # Standardize features for linear models
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Store all model results
+    all_models = {}
+    
+    # 1. Random Forest
+    print("\n[1/5] Training Random Forest Classifier...")
     rf_param_grid = {
         'n_estimators': [100, 200],
         'max_depth': [10, 15, 20],
@@ -296,14 +312,17 @@ def train_decision_tree(X, y):
         n_jobs=-1, verbose=0
     )
     rf_grid_search.fit(X_train, y_train)
-    
-    print(f"Random Forest - Best parameters: {rf_grid_search.best_params_}")
-    print(f"Random Forest - Best CV score: {rf_grid_search.best_score_:.4f}")
-    
     rf_classifier = rf_grid_search.best_estimator_
+    print(f"  Best CV score: {rf_grid_search.best_score_:.4f}")
+    all_models['Random Forest'] = {
+        'model': rf_classifier,
+        'cv_score': rf_grid_search.best_score_,
+        'params': rf_grid_search.best_params_,
+        'use_scaled': False
+    }
     
-    # Also train Decision Tree for comparison
-    print("\nTraining Decision Tree Classifier...")
+    # 2. Decision Tree
+    print("\n[2/5] Training Decision Tree Classifier...")
     dt_param_grid = {
         'max_depth': [10, 12, 15, 18],
         'min_samples_split': [30, 40, 50],
@@ -319,31 +338,204 @@ def train_decision_tree(X, y):
         n_jobs=-1, verbose=0
     )
     dt_grid_search.fit(X_train, y_train)
-    
-    print(f"Decision Tree - Best parameters: {dt_grid_search.best_params_}")
-    print(f"Decision Tree - Best CV score: {dt_grid_search.best_score_:.4f}")
-    
     dt_classifier = dt_grid_search.best_estimator_
+    print(f"  Best CV score: {dt_grid_search.best_score_:.4f}")
+    all_models['Decision Tree'] = {
+        'model': dt_classifier,
+        'cv_score': dt_grid_search.best_score_,
+        'params': dt_grid_search.best_params_,
+        'use_scaled': False
+    }
     
-    # Choose the better model
-    if rf_grid_search.best_score_ >= dt_grid_search.best_score_:
-        print("\n[+] Random Forest performs better - using it as final model")
-        classifier = rf_classifier
-        model_name = "Random Forest"
+    # 3. Logistic Regression
+    print("\n[3/5] Training Logistic Regression...")
+    lr_param_grid = {
+        'C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'penalty': ['l1', 'l2', 'elasticnet'],
+        'solver': ['liblinear', 'saga'],
+        'class_weight': ['balanced', None],
+        'max_iter': [1000]
+    }
+    
+    lr_base = LogisticRegression(random_state=42, n_jobs=-1)
+    lr_grid_search = GridSearchCV(
+        lr_base, lr_param_grid, cv=5, scoring='roc_auc',
+        n_jobs=-1, verbose=0
+    )
+    lr_grid_search.fit(X_train_scaled, y_train)
+    lr_classifier = lr_grid_search.best_estimator_
+    print(f"  Best CV score: {lr_grid_search.best_score_:.4f}")
+    all_models['Logistic Regression'] = {
+        'model': lr_classifier,
+        'cv_score': lr_grid_search.best_score_,
+        'params': lr_grid_search.best_params_,
+        'use_scaled': True
+    }
+    
+    # 4. Linear Regression (for comparison - convert to classification)
+    print("\n[4/5] Training Linear Regression (converted to classification)...")
+    lin_reg = LinearRegression()
+    lin_reg.fit(X_train_scaled, y_train)
+    # Convert regression predictions to classification (threshold at 0.5)
+    lin_reg_pred_train = (lin_reg.predict(X_train_scaled) >= 0.5).astype(int)
+    lin_reg_pred_test = (lin_reg.predict(X_test_scaled) >= 0.5).astype(int)
+    
+    # Calculate ROC-AUC manually for Linear Regression
+    from sklearn.metrics import roc_auc_score
+    lin_reg_proba_train = np.clip(lin_reg.predict(X_train_scaled), 0, 1)
+    lin_reg_cv_scores_list = []
+    from sklearn.model_selection import KFold
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    for train_idx, val_idx in kf.split(X_train_scaled):
+        lin_reg_fold = LinearRegression()
+        lin_reg_fold.fit(X_train_scaled[train_idx], y_train.iloc[train_idx])
+        y_val_proba = np.clip(lin_reg_fold.predict(X_train_scaled[val_idx]), 0, 1)
+        try:
+            auc = roc_auc_score(y_train.iloc[val_idx], y_val_proba)
+            lin_reg_cv_scores_list.append(auc)
+        except:
+            lin_reg_cv_scores_list.append(0.5)  # Default if can't calculate
+    
+    lin_reg_cv_score = np.mean(lin_reg_cv_scores_list) if lin_reg_cv_scores_list else 0.5
+    print(f"  Best CV score: {lin_reg_cv_score:.4f}")
+    all_models['Linear Regression'] = {
+        'model': lin_reg,
+        'cv_score': lin_reg_cv_score,
+        'params': {},
+        'use_scaled': True,
+        'is_regression': True
+    }
+    
+    # 5. Neural Network (MLPClassifier) - Optimized but faster
+    print("\n[5/5] Training Neural Network (MLPClassifier)...")
+    
+    # Smaller, focused grid for faster training
+    nn_param_grid = {
+        'hidden_layer_sizes': [
+            (100,), (150,), (200,),
+            (100, 50), (150, 100), (200, 100),
+            (150, 100, 50)
+        ],
+        'activation': ['relu', 'tanh'],
+        'alpha': [0.0001, 0.001, 0.01],
+        'learning_rate': ['adaptive'],
+        'learning_rate_init': [0.001, 0.01],
+        'max_iter': [1000],
+        'solver': ['adam'],
+        'batch_size': [64, 128]
+    }
+    
+    nn_base = MLPClassifier(random_state=42, early_stopping=True, 
+                           validation_fraction=0.1, n_iter_no_change=15,
+                           max_iter=1000)
+    nn_grid_search = GridSearchCV(
+        nn_base, nn_param_grid, cv=3, scoring='roc_auc',  # Reduced CV folds for speed
+        n_jobs=-1, verbose=0
+    )
+    nn_grid_search.fit(X_train_scaled, y_train)
+    nn_classifier = nn_grid_search.best_estimator_
+    initial_score = nn_grid_search.best_score_
+    print(f"  Initial CV score: {initial_score:.4f}")
+    print(f"  Best parameters: {nn_grid_search.best_params_}")
+    
+    # Quick refinement if promising (only if close to Random Forest)
+    if initial_score > 0.64:  # Only refine if close to best
+        print("  Quick refinement around best parameters...")
+        best_hidden = nn_grid_search.best_params_['hidden_layer_sizes']
+        best_activation = nn_grid_search.best_params_['activation']
+        best_alpha = nn_grid_search.best_params_['alpha']
+        best_lr = nn_grid_search.best_params_['learning_rate_init']
+        
+        # Small refined grid
+        if isinstance(best_hidden, tuple) and len(best_hidden) == 1:
+            hidden_variants = [
+                best_hidden,
+                (int(best_hidden[0]*1.2),),
+                (int(best_hidden[0]*0.8),),
+                (best_hidden[0], best_hidden[0]//2)
+            ]
+        else:
+            hidden_variants = [best_hidden, (150, 100), (200, 100)]
+        
+        nn_param_grid_refined = {
+            'hidden_layer_sizes': hidden_variants[:4],
+            'activation': [best_activation],
+            'alpha': [best_alpha * 0.5, best_alpha, best_alpha * 1.5],
+            'learning_rate': ['adaptive'],
+            'learning_rate_init': [best_lr * 0.5, best_lr, best_lr * 2],
+            'max_iter': [1500],
+            'solver': ['adam'],
+            'batch_size': [64, 128]
+        }
+        
+        nn_refined = MLPClassifier(random_state=42, early_stopping=True,
+                                  validation_fraction=0.1, n_iter_no_change=15,
+                                  max_iter=1500)
+        nn_refined_search = GridSearchCV(
+            nn_refined, nn_param_grid_refined, cv=3, scoring='roc_auc',
+            n_jobs=-1, verbose=0
+        )
+        nn_refined_search.fit(X_train_scaled, y_train)
+        
+        if nn_refined_search.best_score_ > initial_score:
+            print(f"  Refined CV score: {nn_refined_search.best_score_:.4f} (improved!)")
+            nn_classifier = nn_refined_search.best_estimator_
+            nn_grid_search.best_score_ = nn_refined_search.best_score_
+            nn_grid_search.best_params_ = nn_refined_search.best_params_
+        else:
+            print(f"  Refined score: {nn_refined_search.best_score_:.4f} (no improvement)")
+    
+    all_models['Neural Network'] = {
+        'model': nn_classifier,
+        'cv_score': nn_grid_search.best_score_,
+        'params': nn_grid_search.best_params_,
+        'use_scaled': True
+    }
+    
+    # Find best model
+    best_model_name = max(all_models.keys(), key=lambda k: all_models[k]['cv_score'])
+    best_model_info = all_models[best_model_name]
+    classifier = best_model_info['model']
+    model_name = best_model_name
+    
+    print(f"\n{'='*60}")
+    print(f"MODEL COMPARISON SUMMARY")
+    print(f"{'='*60}")
+    for name, info in sorted(all_models.items(), key=lambda x: x[1]['cv_score'], reverse=True):
+        marker = " [BEST]" if name == best_model_name else ""
+        print(f"{name:25s}: CV Score = {info['cv_score']:.4f}{marker}")
+    print(f"{'='*60}")
+    print(f"\n[+] Best Model: {best_model_name} (CV Score: {best_model_info['cv_score']:.4f})")
+    
+    # Use scaled or unscaled data based on model
+    if best_model_info['use_scaled']:
+        X_train_final = X_train_scaled
+        X_test_final = X_test_scaled
     else:
-        print("\n[+] Decision Tree performs better - using it as final model")
-        classifier = dt_classifier
-        model_name = "Decision Tree"
+        X_train_final = X_train
+        X_test_final = X_test
     
     # Cross-validation scores
-    cv_scores = cross_val_score(classifier, X_train, y_train, cv=5, scoring='accuracy')
-    print(f"\nCross-validation accuracy scores: {cv_scores}")
-    print(f"Mean CV accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+    if best_model_info.get('is_regression', False):
+        cv_scores = cross_val_score(classifier, X_train_final, y_train, cv=5, scoring='r2')
+        print(f"\nCross-validation R2 scores: {cv_scores}")
+        print(f"Mean CV R2: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+    else:
+        cv_scores = cross_val_score(classifier, X_train_final, y_train, cv=5, scoring='accuracy')
+        print(f"\nCross-validation accuracy scores: {cv_scores}")
+        print(f"Mean CV accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
     
     # Predictions
-    y_train_pred = classifier.predict(X_train)
-    y_test_pred = classifier.predict(X_test)
-    y_test_proba = classifier.predict_proba(X_test)[:, 1]
+    if best_model_info.get('is_regression', False):
+        y_train_pred_proba = classifier.predict(X_train_final)
+        y_test_pred_proba = classifier.predict(X_test_final)
+        y_train_pred = (y_train_pred_proba >= 0.5).astype(int)
+        y_test_pred = (y_test_pred_proba >= 0.5).astype(int)
+        y_test_proba = np.clip(y_test_pred_proba, 0, 1)  # Clip to [0, 1] for ROC
+    else:
+        y_train_pred = classifier.predict(X_train_final)
+        y_test_pred = classifier.predict(X_test_final)
+        y_test_proba = classifier.predict_proba(X_test_final)[:, 1]
     
     # Evaluate model
     train_accuracy = accuracy_score(y_train, y_train_pred)
@@ -459,11 +651,10 @@ def train_decision_tree(X, y):
         'test_roc_auc': test_roc_auc,
         'confusion_matrix': cm,
         'classification_report': class_report,
-        'best_params': rf_grid_search.best_params_ if model_name == "Random Forest" else dt_grid_search.best_params_,
+        'best_params': best_model_info['params'],
         'cv_mean': cv_scores.mean(),
         'cv_std': cv_scores.std(),
-        'rf_cv_score': rf_grid_search.best_score_,
-        'dt_cv_score': dt_grid_search.best_score_
+        'all_models': all_models
     }
 
 
@@ -717,9 +908,17 @@ def generate_report(dt_results, feature_importance, clustering_results=None):
         f.write(f"{dt_results['model_name'].upper()} CLASSIFIER RESULTS\n")
         f.write("-"*60 + "\n")
         f.write(f"Model Type: {dt_results['model_name']}\n")
-        f.write(f"Best Hyperparameters: {dt_results['best_params']}\n")
-        f.write(f"Random Forest CV Score: {dt_results.get('rf_cv_score', 'N/A'):.4f}\n")
-        f.write(f"Decision Tree CV Score: {dt_results.get('dt_cv_score', 'N/A'):.4f}\n\n")
+        f.write(f"Best Hyperparameters: {dt_results['best_params']}\n\n")
+        
+        # Model comparison
+        if 'all_models' in dt_results:
+            f.write("MODEL COMPARISON (CV Scores):\n")
+            f.write("-"*60 + "\n")
+            for name, info in sorted(dt_results['all_models'].items(), 
+                                    key=lambda x: x[1]['cv_score'], reverse=True):
+                marker = " [SELECTED]" if name == dt_results['model_name'] else ""
+                f.write(f"{name:25s}: {info['cv_score']:.4f}{marker}\n")
+            f.write("\n")
         f.write(f"Cross-Validation Accuracy: {dt_results['cv_mean']:.4f} (+/- {dt_results['cv_std']:.4f})\n")
         f.write(f"Training Accuracy: {dt_results['train_accuracy']:.4f}\n")
         f.write(f"Test Accuracy: {dt_results['test_accuracy']:.4f}\n")
@@ -788,8 +987,8 @@ def main():
     # Perform Clustering Analysis
     clustering_model, clustering_scaler, cluster_labels, clustering_results = perform_clustering_analysis(X, y)
     
-    # Train Decision Tree / Random Forest
-    dt_model, feature_importance, dt_results = train_decision_tree(X, y)
+    # Train all models and compare
+    dt_model, feature_importance, dt_results = train_all_models(X, y)
     
     # Generate report
     generate_report(dt_results, feature_importance, clustering_results)
