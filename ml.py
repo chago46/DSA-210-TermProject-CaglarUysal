@@ -25,9 +25,11 @@ warnings.filterwarnings('ignore')
 # Machine Learning imports
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier, plot_tree
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, StackingClassifier
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.neural_network import MLPClassifier
+import pickle
+import json
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
@@ -507,6 +509,88 @@ def train_all_models(X, y):
     print(f"{'='*60}")
     print(f"\n[+] Best Model: {best_model_name} (CV Score: {best_model_info['cv_score']:.4f})")
     
+    # Try Ensemble Methods (Voting and Stacking) to potentially improve accuracy
+    print("\n" + "="*60)
+    print("ENSEMBLE METHODS")
+    print("="*60)
+    
+    # Prepare models for ensemble (use top 3 models)
+    top_models = sorted(all_models.items(), key=lambda x: x[1]['cv_score'], reverse=True)[:3]
+    print(f"\nCreating ensemble from top 3 models: {[m[0] for m in top_models]}")
+    
+    ensemble_models = []
+    for name, info in top_models:
+        if info['use_scaled']:
+            # For scaled models, we'll use them with scaled data
+            ensemble_models.append((name.lower().replace(' ', '_'), info['model']))
+        else:
+            ensemble_models.append((name.lower().replace(' ', '_'), info['model']))
+    
+    # Voting Classifier (soft voting for probability)
+    print("\n[1/2] Training Voting Classifier (Soft Voting)...")
+    voting_classifier = VotingClassifier(
+        estimators=ensemble_models,
+        voting='soft',
+        n_jobs=-1
+    )
+    
+    # Use scaled data if any model needs it
+    use_scaled_ensemble = any(all_models[m[0]]['use_scaled'] for m in top_models)
+    X_train_ensemble = X_train_scaled if use_scaled_ensemble else X_train
+    X_test_ensemble = X_test_scaled if use_scaled_ensemble else X_test
+    
+    voting_classifier.fit(X_train_ensemble, y_train)
+    voting_cv_scores = cross_val_score(voting_classifier, X_train_ensemble, y_train, 
+                                       cv=3, scoring='roc_auc', n_jobs=-1)
+    voting_cv_score = voting_cv_scores.mean()
+    print(f"  Voting Classifier CV score: {voting_cv_score:.4f}")
+    
+    # Stacking Classifier
+    print("\n[2/2] Training Stacking Classifier...")
+    # Use Logistic Regression as meta-learner
+    meta_learner = LogisticRegression(random_state=42, max_iter=1000)
+    stacking_classifier = StackingClassifier(
+        estimators=ensemble_models,
+        final_estimator=meta_learner,
+        cv=3,
+        n_jobs=-1
+    )
+    stacking_classifier.fit(X_train_ensemble, y_train)
+    stacking_cv_scores = cross_val_score(stacking_classifier, X_train_ensemble, y_train,
+                                        cv=3, scoring='roc_auc', n_jobs=-1)
+    stacking_cv_score = stacking_cv_scores.mean()
+    print(f"  Stacking Classifier CV score: {stacking_cv_score:.4f}")
+    
+    # Add ensemble models to comparison
+    all_models['Voting Classifier'] = {
+        'model': voting_classifier,
+        'cv_score': voting_cv_score,
+        'params': {'voting': 'soft', 'models': [m[0] for m in top_models]},
+        'use_scaled': use_scaled_ensemble
+    }
+    
+    all_models['Stacking Classifier'] = {
+        'model': stacking_classifier,
+        'cv_score': stacking_cv_score,
+        'params': {'meta_learner': 'LogisticRegression', 'models': [m[0] for m in top_models]},
+        'use_scaled': use_scaled_ensemble
+    }
+    
+    # Re-evaluate best model including ensembles
+    best_model_name = max(all_models.keys(), key=lambda k: all_models[k]['cv_score'])
+    best_model_info = all_models[best_model_name]
+    classifier = best_model_info['model']
+    model_name = best_model_name
+    
+    print(f"\n{'='*60}")
+    print(f"UPDATED MODEL COMPARISON (Including Ensembles)")
+    print(f"{'='*60}")
+    for name, info in sorted(all_models.items(), key=lambda x: x[1]['cv_score'], reverse=True):
+        marker = " [BEST]" if name == best_model_name else ""
+        print(f"{name:25s}: CV Score = {info['cv_score']:.4f}{marker}")
+    print(f"{'='*60}")
+    print(f"\n[+] Final Best Model: {best_model_name} (CV Score: {best_model_info['cv_score']:.4f})")
+    
     # Use scaled or unscaled data based on model
     if best_model_info['use_scaled']:
         X_train_final = X_train_scaled
@@ -561,11 +645,52 @@ def train_all_models(X, y):
     print(classification_report(y_test, y_test_pred, 
                               target_names=['Rejected', 'Accepted']))
     
-    # Feature importance
-    feature_importance = pd.DataFrame({
-        'feature': X.columns,
-        'importance': classifier.feature_importances_
-    }).sort_values('importance', ascending=False)
+    # Feature importance (handle ensembles that might not have feature_importances_)
+    try:
+        if hasattr(classifier, 'feature_importances_'):
+            feature_importance = pd.DataFrame({
+                'feature': X.columns,
+                'importance': classifier.feature_importances_
+            }).sort_values('importance', ascending=False)
+        elif hasattr(classifier, 'coef_'):
+            # For linear models, use absolute coefficients
+            coef = classifier.coef_[0] if classifier.coef_.ndim > 1 else classifier.coef_
+            feature_importance = pd.DataFrame({
+                'feature': X.columns,
+                'importance': np.abs(coef)
+            }).sort_values('importance', ascending=False)
+        else:
+            # For ensembles, try to get from base models
+            if hasattr(classifier, 'estimators_'):
+                # Average importance from all estimators
+                importances = []
+                for est in classifier.estimators_:
+                    if hasattr(est, 'feature_importances_'):
+                        importances.append(est.feature_importances_)
+                if importances:
+                    avg_importance = np.mean(importances, axis=0)
+                    feature_importance = pd.DataFrame({
+                        'feature': X.columns,
+                        'importance': avg_importance
+                    }).sort_values('importance', ascending=False)
+                else:
+                    # Fallback: equal importance
+                    feature_importance = pd.DataFrame({
+                        'feature': X.columns,
+                        'importance': np.ones(len(X.columns)) / len(X.columns)
+                    }).sort_values('importance', ascending=False)
+            else:
+                # Fallback: equal importance
+                feature_importance = pd.DataFrame({
+                    'feature': X.columns,
+                    'importance': np.ones(len(X.columns)) / len(X.columns)
+                }).sort_values('importance', ascending=False)
+    except Exception as e:
+        print(f"Warning: Could not extract feature importance: {e}")
+        feature_importance = pd.DataFrame({
+            'feature': X.columns,
+            'importance': np.ones(len(X.columns)) / len(X.columns)
+        }).sort_values('importance', ascending=False)
     
     print("\nTop 15 Most Important Features:")
     print(feature_importance.head(15).to_string(index=False))
@@ -605,7 +730,13 @@ def train_all_models(X, y):
     axes[0, 2].grid(True)
     
     # 4. Prediction Distribution
-    prediction_proba = classifier.predict_proba(X_test)[:, 1]
+    try:
+        if best_model_info.get('is_regression', False):
+            prediction_proba = np.clip(classifier.predict(X_test_final), 0, 1)
+        else:
+            prediction_proba = classifier.predict_proba(X_test_final)[:, 1]
+    except:
+        prediction_proba = y_test_proba
     axes[1, 0].hist(prediction_proba[y_test == 0], bins=30, alpha=0.5, 
                     label='Rejected', color='red')
     axes[1, 0].hist(prediction_proba[y_test == 1], bins=30, alpha=0.5, 
@@ -641,6 +772,42 @@ def train_all_models(X, y):
     print(f"\nModel visualizations saved to {ML_OUTPUT_DIR / 'decision_tree_analysis.png'}")
     plt.close()
     
+    # Create model comparison visualizations
+    print("\nCreating model comparison visualizations...")
+    create_model_comparison_visualizations(all_models, X_train, X_train_scaled, X_test, X_test_scaled, y_train, y_test, scaler)
+    
+    # Save the best model
+    print("\nSaving best model...")
+    model_save_path = ML_OUTPUT_DIR / 'best_model.pkl'
+    scaler_save_path = ML_OUTPUT_DIR / 'scaler.pkl'
+    
+    with open(model_save_path, 'wb') as f:
+        pickle.dump(classifier, f)
+    
+    # Save scaler if model uses scaled data
+    if best_model_info['use_scaled']:
+        with open(scaler_save_path, 'wb') as f:
+            pickle.dump(scaler, f)
+        print(f"  Model saved to: {model_save_path}")
+        print(f"  Scaler saved to: {scaler_save_path}")
+    else:
+        print(f"  Model saved to: {model_save_path}")
+    
+    # Save model metadata
+    model_metadata = {
+        'model_name': model_name,
+        'cv_score': float(best_model_info['cv_score']),
+        'test_accuracy': float(test_accuracy),
+        'test_roc_auc': float(test_roc_auc),
+        'best_params': str(best_model_info['params']),
+        'use_scaled': best_model_info['use_scaled'],
+        'feature_names': list(X.columns)
+    }
+    
+    with open(ML_OUTPUT_DIR / 'model_metadata.json', 'w') as f:
+        json.dump(model_metadata, f, indent=2)
+    print(f"  Model metadata saved to: {ML_OUTPUT_DIR / 'model_metadata.json'}")
+    
     return classifier, feature_importance, {
         'model_name': model_name,
         'train_accuracy': train_accuracy,
@@ -656,6 +823,118 @@ def train_all_models(X, y):
         'cv_std': cv_scores.std(),
         'all_models': all_models
     }
+
+
+def create_model_comparison_visualizations(all_models, X_train, X_train_scaled, X_test, X_test_scaled, y_train, y_test, scaler):
+    """Create comprehensive comparison visualizations for all models"""
+    print("  Creating ROC curves comparison...")
+    
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    
+    # 1. ROC Curves for all models
+    ax1 = axes[0, 0]
+    colors = plt.cm.tab10(np.linspace(0, 1, len(all_models)))
+    
+    for (name, info), color in zip(sorted(all_models.items(), key=lambda x: x[1]['cv_score'], reverse=True), colors):
+        model = info['model']
+        use_scaled = info['use_scaled']
+        X_test_final = X_test_scaled if use_scaled else X_test
+        
+        try:
+            if info.get('is_regression', False):
+                y_proba = np.clip(model.predict(X_test_final), 0, 1)
+            else:
+                y_proba = model.predict_proba(X_test_final)[:, 1]
+            
+            fpr, tpr, _ = roc_curve(y_test, y_proba)
+            auc = roc_auc_score(y_test, y_proba)
+            ax1.plot(fpr, tpr, label=f'{name} (AUC={auc:.3f})', linewidth=2, color=color)
+        except Exception as e:
+            print(f"    Warning: Could not plot ROC for {name}: {e}")
+    
+    ax1.plot([0, 1], [0, 1], 'k--', linewidth=1, label='Random (AUC=0.500)')
+    ax1.set_xlabel('False Positive Rate', fontsize=11)
+    ax1.set_ylabel('True Positive Rate', fontsize=11)
+    ax1.set_title('ROC Curves - All Models Comparison', fontsize=12, fontweight='bold')
+    ax1.legend(loc='lower right', fontsize=9)
+    ax1.grid(True, alpha=0.3)
+    
+    # 2. CV Scores Comparison
+    ax2 = axes[0, 1]
+    model_names = [name for name, _ in sorted(all_models.items(), key=lambda x: x[1]['cv_score'], reverse=True)]
+    cv_scores = [all_models[name]['cv_score'] for name in model_names]
+    colors_bar = ['green' if score == max(cv_scores) else 'steelblue' for score in cv_scores]
+    
+    bars = ax2.barh(range(len(model_names)), cv_scores, color=colors_bar, alpha=0.8, edgecolor='black')
+    ax2.set_yticks(range(len(model_names)))
+    ax2.set_yticklabels(model_names, fontsize=9)
+    ax2.set_xlabel('Cross-Validation ROC-AUC Score', fontsize=11)
+    ax2.set_title('Model Performance Comparison (CV Scores)', fontsize=12, fontweight='bold')
+    ax2.set_xlim([min(cv_scores) - 0.05, max(cv_scores) + 0.05])
+    ax2.grid(True, alpha=0.3, axis='x')
+    
+    for i, (bar, score) in enumerate(zip(bars, cv_scores)):
+        ax2.text(score + 0.002, i, f'{score:.4f}', va='center', fontsize=8, fontweight='bold')
+    
+    # 3. Test Accuracy Comparison
+    ax3 = axes[1, 0]
+    test_accuracies = []
+    for name in model_names:
+        model = all_models[name]['model']
+        use_scaled = all_models[name]['use_scaled']
+        X_test_final = X_test_scaled if use_scaled else X_test
+        
+        try:
+            if all_models[name].get('is_regression', False):
+                y_pred = (model.predict(X_test_final) >= 0.5).astype(int)
+            else:
+                y_pred = model.predict(X_test_final)
+            acc = accuracy_score(y_test, y_pred)
+            test_accuracies.append(acc)
+        except:
+            test_accuracies.append(0.0)
+    
+    colors_bar_acc = ['green' if acc == max(test_accuracies) else 'coral' for acc in test_accuracies]
+    bars = ax3.barh(range(len(model_names)), test_accuracies, color=colors_bar_acc, alpha=0.8, edgecolor='black')
+    ax3.set_yticks(range(len(model_names)))
+    ax3.set_yticklabels(model_names, fontsize=9)
+    ax3.set_xlabel('Test Accuracy', fontsize=11)
+    ax3.set_title('Test Accuracy Comparison', fontsize=12, fontweight='bold')
+    ax3.set_xlim([min(test_accuracies) - 0.05, max(test_accuracies) + 0.05])
+    ax3.grid(True, alpha=0.3, axis='x')
+    
+    for i, (bar, acc) in enumerate(zip(bars, test_accuracies)):
+        ax3.text(acc + 0.005, i, f'{acc:.4f}', va='center', fontsize=8, fontweight='bold')
+    
+    # 4. Model Complexity vs Performance
+    ax4 = axes[1, 1]
+    # Estimate complexity (number of parameters or model type complexity)
+    complexities = []
+    for name in model_names:
+        model = all_models[name]['model']
+        if hasattr(model, 'n_estimators'):  # Random Forest
+            complexities.append(model.n_estimators * 10)
+        elif hasattr(model, 'hidden_layer_sizes'):  # Neural Network
+            total_neurons = sum(model.hidden_layer_sizes) if isinstance(model.hidden_layer_sizes, tuple) else model.hidden_layer_sizes[0]
+            complexities.append(total_neurons)
+        elif 'Ensemble' in name or 'Voting' in name or 'Stacking' in name:
+            complexities.append(50)  # Medium complexity
+        else:
+            complexities.append(10)  # Simple models
+    
+    scatter = ax4.scatter(complexities, cv_scores, s=200, alpha=0.6, c=colors_bar, edgecolors='black', linewidth=2)
+    for i, name in enumerate(model_names):
+        ax4.annotate(name, (complexities[i], cv_scores[i]), 
+                    xytext=(5, 5), textcoords='offset points', fontsize=8)
+    ax4.set_xlabel('Model Complexity (Estimated)', fontsize=11)
+    ax4.set_ylabel('CV ROC-AUC Score', fontsize=11)
+    ax4.set_title('Model Complexity vs Performance', fontsize=12, fontweight='bold')
+    ax4.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(ML_OUTPUT_DIR / 'model_comparison.png', dpi=300, bbox_inches='tight')
+    print(f"  Model comparison saved to {ML_OUTPUT_DIR / 'model_comparison.png'}")
+    plt.close()
 
 
 def perform_clustering_analysis(X, y, X_scaled=None):
@@ -998,9 +1277,12 @@ def main():
     print("="*60)
     print(f"\nOutputs saved to {ML_OUTPUT_DIR}/")
     print("  - decision_tree_analysis.png")
+    print("  - model_comparison.png")
     print("  - clustering_analysis.png")
     print("  - cluster_comparison.png")
     print("  - ml_analysis_report.txt")
+    print("  - best_model.pkl (saved model for future predictions)")
+    print("  - model_metadata.json (model information)")
 
 
 if __name__ == "__main__":
