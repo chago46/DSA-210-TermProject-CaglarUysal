@@ -4,7 +4,15 @@ I'm **Caglar Uysal**, a Computer Science and Engineering student at Sabancı Uni
 
 This repository contains my **term project** for the course.
 
-**For reproducing my analysis you can run run_complete_analysis.py file after install requirements**
+**For reproducing my analysis you can run `scripts/00_run_complete_analysis.py` file after installing requirements**
+
+**Quick Commands:**
+```cmd
+pip install -r requirements.txt
+python scripts/00_run_complete_analysis.py
+```
+
+See `RUN_COMMANDS.md` for detailed command reference.
 
 ---
 
@@ -144,6 +152,10 @@ These additions will allow testing whether **economic or institutional factors**
 ### 4. Data Processing  
 - **rapidfuzz** – Fuzzy string matching for university name mapping
 
+### 5. Machine Learning
+- **scikit-learn** – Machine learning models (Decision Tree, Random Forest, Logistic Regression, Neural Network, Ensemble methods)
+- **K-means clustering** – Unsupervised learning for applicant segmentation
+
 ---
 
 ## 🚀 Usage
@@ -151,11 +163,11 @@ These additions will allow testing whether **economic or institutional factors**
 ### Quick Start
 1. Install dependencies: `pip install -r requirements.txt`
 2. Setup Kaggle API (optional): Place `kaggle.json` in `~/.kaggle/` directory
-3. Run complete analysis: `python run_complete_analysis.py`
+3. Run complete analysis: `python scripts/00_run_complete_analysis.py`
 
 ### Recommended: Run with Full Logging
 ```bash
-python run_complete_analysis.py
+python scripts/00_run_complete_analysis.py
 ```
 This will:
 - Run all analysis steps (Data Collection, EDA, Hypothesis Testing)
@@ -165,24 +177,42 @@ This will:
 
 ### Alternative: Run Individual Steps
 ```bash
-python data_collection_new.py   # Data collection and merging
-python eda.py                   # Exploratory Data Analysis
-python hypothesis_testing.py    # Hypothesis testing
+# From project root directory
+python scripts/01_data_collection.py            # Data collection and merging
+python scripts/02_exploratory_data_analysis.py  # Exploratory Data Analysis
+python scripts/03_hypothesis_testing.py         # Hypothesis testing
+python scripts/04_machine_learning.py          # Machine Learning Analysis
 ```
 
 ### Project Structure
 ```
-c/
+DSA-210-TermProject-CaglarUysal/
 ├── data/
-│   ├── raw/              # Raw downloaded datasets
-│   │   ├── all.csv                           # GradCafe admission data
-│   │   ├── QS World University Rankings 2025 (Top global universities).csv
-│   │   └── Cost_of_living_index.csv
-│   └── processed/        # Cleaned and merged datasets
-│       ├── admissions_merged.csv
-│       ├── qs_rankings_clean.csv
-│       └── cost_of_living_clean.csv
-├── outputs/              # Analysis results, plots, reports
+│   ├── raw/                      # Raw downloaded datasets
+│   │   ├── all.csv               # GradCafe admission data (not in repo)
+│   │   ├── qs_rankings_2025.csv  # QS World University Rankings 2025
+│   │   └── cost_of_living_index.csv
+│   ├── processed/                # Cleaned and merged datasets
+│   │   ├── final_combined_dataset.csv
+│   │   ├── merged_data_combined.csv
+│   │   ├── qs_rankings_clean.csv
+│   │   └── cost_of_living_clean.csv
+│   └── mappings/                 # University name mappings
+│       ├── university_mappings_from_qs.csv
+│       ├── university_mappings_simple.json
+│       ├── university_mappings_detailed.json
+│       └── university_mappings_grouped.json
+├── scripts/                      # All Python scripts
+│   ├── 00_run_complete_analysis.py      # Complete pipeline (RECOMMENDED)
+│   ├── 01_data_collection.py            # Data collection and merging
+│   ├── 02_exploratory_data_analysis.py  # EDA
+│   ├── 03_hypothesis_testing.py         # Hypothesis testing
+│   ├── 04_machine_learning.py           # ML analysis
+│   ├── utils_map_universities.py        # University mapping utility
+│   ├── utils_create_mappings.py         # Create mapping JSON files
+│   ├── utils_save_dataset.py            # Save final dataset
+│   └── utils_data_adapter.py            # Data adapter utility
+├── outputs/                      # EDA and hypothesis testing results
 │   ├── eda_report.txt
 │   ├── hypothesis_testing_report.txt
 │   ├── correlation_heatmap.png
@@ -191,25 +221,24 @@ c/
 │   ├── feature_relationships.png
 │   ├── categorical_analysis.png
 │   └── hypothesis_*.png
-├── logs/                 # Execution logs and summaries
-│   ├── complete_analysis_TIMESTAMP.log
-│   └── analysis_summary_TIMESTAMP.txt
-├── md_files/             # Documentation
-│   ├── README.md
-│   ├── QUICKSTART.md
+├── ml_outputs/                   # Machine Learning results
+│   ├── ml_analysis_report.txt
+│   ├── decision_tree_analysis.png
+│   ├── model_comparison.png
+│   ├── clustering_analysis.png
+│   ├── cluster_comparison.png
+│   ├── best_model.pkl
+│   ├── scaler.pkl
+│   └── model_metadata.json
+├── docs/                         # Documentation
+│   ├── ML_SUBMISSION_SUMMARY.md
+│   ├── QUICK_REFERENCE_ML.md
+│   ├── SUBMISSION_CHECKLIST.md
 │   ├── DATASET_MERGING_STRATEGY.md
-│   ├── FEEDBACK_RESPONSE.md
-│   └── PROJECT_SUMMARY.md
-├── data_collection_new.py    # Data collection and merging script
-├── eda.py                    # Exploratory Data Analysis
-├── hypothesis_testing.py     # Hypothesis testing (with H0/H1)
-├── run_complete_analysis.py  # Complete pipeline with logging (RECOMMENDED)
-├── map_universities_from_qs.py # University name mapping utility
-├── final_combined_dataset.csv # Final merged dataset
-├── merged_data_combined.csv  # Intermediate merged dataset
-├── university_mappings_from_qs.csv # University name mappings
-├── university_mappings_*.json     # Mapping JSON files
-└── requirements.txt            # Dependencies
+│   └── QUICKSTART.md
+├── README.md                     # Main project documentation
+├── requirements.txt              # Python dependencies
+└── .gitignore                    # Git ignore rules
 ```  
 
 ---
@@ -256,9 +285,53 @@ After running the analysis, the following outputs are generated:
 - `categorical_analysis.png` - Categorical variable analysis
 - `hypothesis_1.png` through `hypothesis_6.png` - Hypothesis-specific plots
 
+### Machine Learning Outputs (in `ml_outputs/` directory) - NEW
+- `ml_analysis_report.txt` - Comprehensive ML analysis report with all model comparisons
+- `decision_tree_analysis.png` - Best model performance visualizations (ROC curve, confusion matrix, feature importance)
+- `model_comparison.png` - Comparison of all 7 models (ROC curves, CV scores, test accuracy)
+- `clustering_analysis.png` - K-means clustering analysis (7 visualizations)
+- `cluster_comparison.png` - Cluster size vs acceptance rate comparison
+- `best_model.pkl` - Saved trained model for future predictions
+- `scaler.pkl` - Saved scaler for data preprocessing
+- `model_metadata.json` - Model metadata and configuration
+
 ### Execution Logs (in `logs/` directory)
 - `complete_analysis_TIMESTAMP.log` - Full execution log with all outputs
 - `analysis_summary_TIMESTAMP.txt` - Quick summary report
+
+---
+
+## 🤖 Machine Learning Analysis (January 2nd Submission)
+
+### Models Implemented
+- **7 Machine Learning Models:**
+  1. Random Forest Classifier
+  2. Decision Tree Classifier
+  3. Logistic Regression
+  4. Linear Regression
+  5. Neural Network (MLPClassifier)
+  6. Voting Classifier (Ensemble)
+  7. Stacking Classifier (Ensemble) ⭐ **Best Model**
+
+### Best Model Performance
+- **Model:** Stacking Classifier
+- **Test Accuracy:** 63.48%
+- **Test ROC-AUC:** 0.6858
+- **Test F1-Score:** 0.6784
+
+### Clustering Analysis
+- **Algorithm:** K-means clustering
+- **Optimal Clusters:** 5
+- **Purpose:** Identify distinct applicant groups with different admission patterns
+
+### Key Features
+- Comprehensive model comparison with visualizations
+- Hyperparameter tuning for all models
+- Feature importance analysis
+- Saved model for future predictions (`best_model.pkl`)
+- Detailed ML analysis report
+
+**See `ML_SUBMISSION_SUMMARY.md` for complete ML analysis documentation.**
 
 ---
 
@@ -267,6 +340,9 @@ To extend this project:
 - Collect more recent or domain-specific datasets (e.g., AI or CS graduate programs).  
 - Integrate additional data sources for SOP/LOR analysis.  
 - Explore additional fairness metrics and bias detection methods.
+- Experiment with deep learning architectures (LSTM, Transformers)
+- Implement feature selection algorithms (Recursive Feature Elimination)
+- Add model interpretability tools (SHAP values, LIME)
 
 ---
 
@@ -289,6 +365,37 @@ Additional documentation files:
 ---
 
 This project demonstrates how data science can be applied to a **real-world, student-relevant problem** — understanding graduate admissions quantitatively.  
-By combining statistical analysis and hypothesis testing, it provides insights to guide future applicants.
+By combining statistical analysis, hypothesis testing, and machine learning, it provides insights to guide future applicants.
+
+---
+
+## 📚 Documentation Files
+
+- **`README.md`** - This file (complete project overview)
+- **`ML_SUBMISSION_SUMMARY.md`** - Detailed ML analysis documentation (January 2nd submission)
+- **`QUICK_REFERENCE_ML.md`** - Quick reference guide for ML results
+- **`SUBMISSION_CHECKLIST.md`** - Pre-submission checklist
+- **`md_files/DATASET_MERGING_STRATEGY.md`** - Dataset merging approach
+- **`md_files/QUICKSTART.md`** - Quick start guide
+
+---
+
+## ✅ Project Status
+
+### Completed Milestones
+- ✅ **October 31:** Project proposal submitted
+- ✅ **November 28:** Data collection and EDA completed
+- ✅ **January 2:** Machine Learning methods applied
+
+### Current Status: **READY FOR FINAL SUBMISSION**
+
+All requirements have been met:
+- ✅ Data collection and enrichment
+- ✅ Exploratory Data Analysis
+- ✅ Statistical hypothesis testing (6 hypotheses)
+- ✅ Machine Learning analysis (7 models + ensembles + clustering)
+- ✅ Comprehensive visualizations
+- ✅ Complete documentation
+- ✅ Code well-documented and reproducible
 
 ---

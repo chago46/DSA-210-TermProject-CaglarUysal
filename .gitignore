@@ -4,27 +4,14 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
 venv/
+env/
 ENV/
-.venv
-
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb_checkpoints
-
-# Data files
-data/raw/
-data/processed/
-*.csv
-*.xlsx
-*.xls
-*.Rdata
-*.pkl
-*.pickle
-
-# Kaggle API
-.kaggle/
 
 # IDE
 .vscode/
@@ -33,15 +20,31 @@ data/processed/
 *.swo
 *~
 
+# Data files (large)
+data/raw/all.csv
+*.zip
+*.tar.gz
+
+# Logs
+logs/
+*.log
+
 # OS
 .DS_Store
 Thumbs.db
 
-# Project specific
-outputs/
-results/
-*.html
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
 
-# Logs (optional - uncomment if you don't want to track logs)
-# logs/
+# Outputs (can be regenerated)
+outputs/*.png
+outputs/*.txt
+ml_outputs/*.png
+ml_outputs/*.txt
+ml_outputs/*.pkl
+ml_outputs/*.json
 
+# Keep directory structure
+!outputs/.gitkeep
+!ml_outputs/.gitkeep

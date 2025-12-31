@@ -2,7 +2,7 @@
 HYPOTHESIS TESTING REPORT - COMPREHENSIVE ANALYSIS
 ================================================================================
 
-Date Generated: 2025-11-30 21:04:50
+Date Generated: 2025-12-30 22:57:01
 Dataset Shape: (30135, 72)
 Total Observations: 30,135
 
@@ -16,7 +16,7 @@ KEY FINDINGS:
     → Interpretation: GRE scores alone are not strong predictors in this dataset
     → Action: Consider GRE as one factor among many, not a primary determinant
   H2: GPA correlation: 0.039
-    → Most predictive factor: qs_Academic_Reputation_Score (r=-0.159)
+    → Most predictive factor: gre_subject (r=0.072)
     → Interpretation: GPA is NOT the most predictive factor
     → Action: Consider university prestige (QS rankings) as more important than GPA alone
   H3: Research Intensity shows SIGNIFICANT impact on admission
@@ -60,16 +60,16 @@ HYPOTHESIS 2: H2: GPA most predictive
 --------------------------------------------------------------------------------
   RESULTS:
     Top 5 Most Predictive Factors:
-      1. qs_Academic_Reputation_Score: r=-0.1595, p=8.79e-171
-      2. qs_Citations_per_Faculty_Score: r=-0.1487, p=1.34e-148
-      3. qs_Employer_Reputation_Score: r=-0.1460, p=3.28e-143
-      4. qs_Employment_Outcomes_Score: r=-0.1453, p=9.37e-142
-      5. qs_Faculty_Student_Score: r=-0.1452, p=1.15e-141
+      1. gre_subject: r=0.0719, p=3.33e-06
+      2. gre_quant: r=-0.0440, p=2.28e-14
+      3. GRE Quant: r=-0.0440, p=2.28e-14
+      4. gre_verbal: r=-0.0437, p=3.42e-14
+      5. GRE Verbal: r=-0.0437, p=3.42e-14
 
     GPA Correlation: 0.0389
   INTERPRETATION:
     - GPA is NOT the most predictive factor
-    - qs_Academic_Reputation_Score has stronger correlation (-0.1595)
+    - gre_subject has stronger correlation (0.0719)
     - QS ranking scores show stronger negative correlations
     - This suggests university prestige matters more than individual GPA
   RECOMMENDATION:
@@ -98,6 +98,8 @@ HYPOTHESIS 3: H3: Research experience impact
 HYPOTHESIS 4: H4: SOP and LOR moderate impact
 --------------------------------------------------------------------------------
   STATUS: Could not be tested (missing data)
+  RECOMMENDATION: Data collection needed for this hypothesis
+
 
 HYPOTHESIS 5: H5: University rating correlation
 --------------------------------------------------------------------------------
@@ -119,6 +121,7 @@ HYPOTHESIS 6: H6: Socioeconomic patterns
 --------------------------------------------------------------------------------
   RESULTS:
     QS Rankings Correlations:
+      qs_RANK_2025: r=0.1337, p=4.70e-98
       qs_Overall_Score: r=-0.1447, p=1.14e-114
       qs_Academic_Reputation_Score: r=-0.1595, p=8.79e-171
 
@@ -135,3 +138,40 @@ HYPOTHESIS 6: H6: Socioeconomic patterns
     - Consider that top-ranked universities may be more selective
     - Cost of living is not a primary factor in admission decisions
 
+
+================================================================================
+ACTIONABLE RECOMMENDATIONS
+================================================================================
+  1. GRE SCORES:
+     - Do not rely solely on GRE scores for admission prediction
+     - GRE is necessary but not sufficient for admission
+     - Focus on holistic application improvement
+  2. GPA AND UNIVERSITY SELECTION:
+     - GPA is important but not the most predictive factor
+     - University prestige (QS rankings) shows stronger correlation
+     - Strategy: Match your GPA to universities where you're competitive
+     - Consider applying to universities with QS rankings that match your profile
+  3. RESEARCH INTENSITY:
+     - University research intensity (QS Research Intensity) affects admission patterns
+     - Consider research focus when selecting target universities
+     - Very High research universities may have different admission criteria
+  4. UNIVERSITY PRESTIGE AND TEST SCORES:
+     - Higher prestige universities (higher QS scores) require higher GRE scores
+     - Use QS rankings to identify universities matching your GRE profile
+     - Target universities where your GRE scores align with their prestige level
+  5. UNIVERSITY RANKINGS:
+     - QS rankings are strong predictors of admission patterns
+     - Higher-ranked universities may be more selective
+     - Research target universities' QS rankings and acceptance patterns
+     - Consider a balanced application strategy (reach, match, safety)
+  6. DATA LIMITATIONS:
+     - SOP and LOR data not available in this dataset
+     - These factors may still be important in real admissions
+     - Consider collecting additional data for comprehensive analysis
+  7. NEXT STEPS:
+     - Build predictive models using QS rankings and GPA as key features
+     - Analyze acceptance patterns by university tier
+     - Consider interaction effects between factors
+     - Validate findings with additional data sources
+
+================================================================================
