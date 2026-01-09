@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Graduate Admission Prediction – Project Presentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --bg-alt: #ffffff;
+      --card: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.1);
+      --accent-strong: #1d4ed8;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: linear-gradient(to bottom, #f1f5f9 0%, #ffffff 100%);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      width: 90vw;
+      max-width: none;
+      margin: 0 auto;
+      padding: 32px 20px 40px;
+    }
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 999px;
+      padding: 4px 10px;
+      border: 1px solid var(--accent-soft);
+      width: fit-content;
+    }
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+    }
+    h1 {
+      font-size: clamp(26px, 3vw, 32px);
+      margin: 0;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 720px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .meta span::before {
+      content: "";
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.4fr);
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    section {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    section::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.05), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.02), transparent 55%);
+      mix-blend-mode: normal;
+      opacity: 1;
+      pointer-events: none;
+    }
+    section h2 {
+      position: relative;
+      margin: 0 0 10px;
+      font-size: 17px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-strong);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    section h2 span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+    }
+    section .body {
+      position: relative;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    p {
+      margin: 0 0 8px;
+    }
+    ul {
+      margin: 4px 0 8px 18px;
+      padding: 0;
+    }
+    li {
+      margin: 4px 0;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      background: rgba(248, 250, 252, 0.9);
+      margin-bottom: 6px;
+    }
+    .pill strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .stat {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 8px 10px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .stat-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+      font-size: 11px;
+    }
+    .tag {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      background: #f8fafc;
+      color: var(--muted);
+    }
+    footer {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        DSA210 – Introduction to Data Science · Term Project
+      </div>
+      <h1>Graduate Admission Prediction with Real-World Applicant Data</h1>
+      <p class="subtitle">
+        A full data‑science pipeline on 30K+ GradCafe applications, enriched with QS World
+        University Rankings 2025 and global cost‑of‑living indicators to understand what truly
+        drives graduate admission outcomes.
+      </p>
+      <div class="meta">
+        <span>Student: Caglar Uysal</span>
+        <span>Course: DSA‑210 – Introduction to Data Science</span>
+        <span>Institution: Sabancı University</span>
+      </div>
+    </header>
+
+    <main>
+      <div>
+        <!-- Motivation -->
+        <section>
+          <h2><span class="dot"></span> Motivation</h2>
+          <div class="body">
+            <div class="pill"><strong>Why</strong> this project?</div>
+            <p>
+              Graduate admissions are competitive, expensive, and often opaque. Applicants invest
+              heavily in exams like the GRE without clearly knowing how much these scores
+              actually matter compared to GPA, university prestige, or economic context.
+            </p>
+            <p>
+              This project uses real-world admission data to answer a practical question:
+              <strong>“Which factors matter most for getting accepted to graduate school?”</strong>
+            </p>
+            <p class="muted">
+              The goal is to provide evidence‑based guidance for future applicants and to bring
+              more transparency to how academic, institutional, and socioeconomic factors interact
+              in graduate admissions.
+            </p>
+          </div>
+        </section>
+
+        <!-- Data Source -->
+        <section>
+          <h2><span class="dot"></span> Data Source & Collection</h2>
+          <div class="body">
+            <div class="pill"><strong>Datasets</strong> used</div>
+            <p><strong>Primary dataset – GradCafe Admission Data</strong></p>
+            <ul>
+              <li>
+                Public dataset of <strong>real admission results</strong> scraped from GradCafe
+                (GitHub).
+              </li>
+              <li>
+                Contains 271K+ total results (27K+ in Computer Science) with fields such as
+                university, major, degree, decision (accepted/rejected), GRE Verbal/Quant/Writing,
+                GPA, season, and applicant status.
+              </li>
+            </ul>
+            <p><strong>Enrichment datasets</strong></p>
+            <ul>
+              <li>
+                <strong>QS World University Rankings 2025</strong> (Kaggle) – overall score,
+                academic reputation, research intensity, and other ranking metrics.
+              </li>
+              <li>
+                <strong>Global Cost of Living Index</strong> (Kaggle) – country-level cost of
+                living, rent, groceries, and purchasing power indices.
+              </li>
+            </ul>
+            <p><strong>Collection & merging workflow</strong></p>
+            <ul>
+              <li>
+                Raw GradCafe data loaded and cleaned; university names standardized and
+                <strong>matched directly</strong> to QS universities using mapping files.
+              </li>
+              <li>
+                QS ranking features and cost‑of‑living indicators merged into a single
+                <strong>final combined dataset</strong> with 30,135 observations and 72 features.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Data Analysis -->
+        <section>
+          <h2><span class="dot"></span> Data Analysis Pipeline</h2>
+          <div class="body">
+            <div class="pill"><strong>Methods</strong> & stages</div>
+            <p><strong>1. Data cleaning & integration</strong></p>
+            <ul>
+              <li>Handled missing values, ensured no duplicate rows, standardized key fields.</li>
+              <li>
+                Merged GradCafe data with QS rankings and cost‑of‑living indices using university
+                name mappings and country information.
+              </li>
+            </ul>
+            <p><strong>2. Exploratory Data Analysis (EDA)</strong></p>
+            <ul>
+              <li>
+                Described distributions of key variables (GRE, GPA, QS scores, cost‑of‑living).
+              </li>
+              <li>
+                Explored correlations between academic metrics, institutional prestige, and
+                admission outcomes.
+              </li>
+              <li>
+                Generated visualizations: distributions, boxplots, correlation heatmap,
+                categorical analysis, and feature‑relationship plots.
+              </li>
+            </ul>
+            <p><strong>3. Hypothesis testing</strong></p>
+            <ul>
+              <li>
+                Formulated six hypotheses with explicit
+                <strong>H₀/H₁</strong> and appropriate tests (Pearson/Spearman correlation,
+                Mann–Whitney U, etc.).
+              </li>
+              <li>
+                Tested, for example, whether GRE scores strongly predict admission, whether GPA is
+                the most predictive academic factor, and how QS rankings and cost‑of‑living relate
+                to outcomes.
+              </li>
+            </ul>
+            <p><strong>4. Machine learning modelling</strong></p>
+            <ul>
+              <li>
+                Trained 7 models (Decision Tree, Random Forest, Logistic/Linear Regression,
+                Neural Network, Voting and Stacking ensembles) to predict admission decisions.
+              </li>
+              <li>
+                Selected a <strong>Stacking Classifier</strong> as the best model based on
+                cross‑validation, test accuracy, ROC‑AUC, and F1‑score.
+                <span class="muted">(Stacking combines multiple models: first, several base models make predictions; then a "meta-learner" learns how to best combine those predictions for the final decision. Models used a selected subset of features including QS rankings, GRE scores, GPA, and categorical variables, not all 72 features.)</span>
+              </li>
+              <li>
+                Performed <strong>K‑means clustering</strong> (k = 5) to identify applicant
+                segments with different acceptance rates.
+              </li>
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <!-- Key Findings -->
+        <section>
+          <h2><span class="dot"></span> Key Findings</h2>
+          <div class="body">
+            <div class="pill"><strong>What</strong> the data says</div>
+            <div class="stat-grid">
+              <div class="stat">
+                <div class="stat-label">Dataset</div>
+                <div class="stat-value">30,135</div>
+                <div class="stat-desc">observations · 72 total features</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Best model</div>
+                <div class="stat-value">Stacking</div>
+                <div class="stat-desc">Acc ≈ 63.5% · ROC‑AUC ≈ 0.69</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Clusters</div>
+                <div class="stat-value">5</div>
+                <div class="stat-desc">distinct applicant groups</div>
+              </div>
+            </div>
+            <ul>
+              <li>
+                <strong>GRE scores alone are weak predictors</strong> of admission
+                (correlation ≈ −0.013); they are necessary but not sufficient.
+              </li>
+              <li>
+                <strong>GPA is important but not the most predictive factor</strong>; in this
+                dataset, GRE subject score and several institutional metrics show stronger
+                associations with outcomes.
+              </li>
+              <li>
+                <strong>University prestige matters:</strong> QS Academic Reputation and overall
+                scores show significant correlations with admission patterns and with required GRE
+                levels—higher prestige universities tend to require higher GRE scores and appear
+                more selective.
+              </li>
+              <li>
+                <strong>Research intensity affects admission patterns:</strong> universities with
+                very high research intensity exhibit clearly different acceptance behavior compared
+                to lower‑intensity institutions.
+              </li>
+              <li>
+                <strong>Cost of living indices show little direct effect</strong> on admission
+                probability, suggesting that economic context is less influential than academic and
+                institutional factors in this dataset.
+              </li>
+              <li>
+                <strong>Clustering reveals heterogeneous applicant profiles</strong> with acceptance
+                rates ranging roughly from low‑40% to above 60%, emphasizing that combinations of
+                features (major, season, scores, prestige) define distinct opportunity levels.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Limitations & Future Work -->
+        <section>
+          <h2><span class="dot"></span> Limitations & Future Work</h2>
+          <div class="body">
+            <div class="pill"><strong>What</strong> could be improved</div>
+            <p><strong>Limitations</strong></p>
+            <ul>
+              <li>
+                Data is self‑reported by GradCafe users and may contain <strong>selection and
+                reporting bias</strong>.
+              </li>
+              <li>
+                Critical qualitative features such as <strong>SOP quality, LOR strength, and
+                research projects</strong> are not available and could not be tested.
+              </li>
+              <li>
+                QS rankings and cost‑of‑living indices are used as proxies and may not perfectly
+                reflect individual program policies or personal financial constraints.
+              </li>
+            </ul>
+            <p><strong>Future directions</strong></p>
+            <ul>
+              <li>
+                Collect richer data on SOP/LOR, research experience, and funding to better model
+                holistic review.
+              </li>
+              <li>
+                Extend the analysis to <strong>more recent or domain‑specific cohorts</strong>
+                (e.g., AI/ML programs) and include fairness/bias diagnostics.
+              </li>
+              <li>
+                Explore more advanced models (e.g., deep learning, sequence models for application
+                histories) and interpretability tools such as SHAP or LIME.
+              </li>
+              <li>
+                Turn the trained model and insights into an <strong>interactive decision‑support
+                tool</strong> where students can input their profile and explore realistic target
+                schools.
+              </li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">End‑to‑end data science pipeline</span>
+              <span class="tag">Real‑world student impact</span>
+              <span class="tag">Evidence‑based application strategy</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      This HTML file summarizes the full project; for full code, logs, and figures see the
+      accompanying repository.
+    </footer>
+  </div>
+</body>
+</html>
+
+
